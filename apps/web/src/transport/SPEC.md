@@ -156,7 +156,10 @@ The browser never scrubs or holds a vendor client: the host is the only sanitize
   `supportsPlanSummaryGeneration`, `supportsChangeMutations`, `supportsRichAnchors`, `supportsTurnChanges`,
   `supportsUserThemes`, `supportsToolResponses`, `respondToTool`,
   `supportsHostSearch` (v97 — the search palette asks `search.query` / `search.preview` only of a host that
-  serves them; an older host gets the local providers and a notice),
+  serves them; an older host gets the local providers and a notice), `supportsTextSearch` (v100 —
+  Find in Files asks `search.text` and listens on `search.textResults` only of a host that serves them;
+  against an older host the palette hides the command and the window opened by the chord says the host
+  needs an update),
   `installClientErrorReporting`, `reportClientError`, `clientErrorReport`. `respondToTool(sessionId,
   toolCallId, response)` is the one place a tool response leaves the client (chat and plan page both use
   it): it sends `session.respondToTool` to a v93+ host and the retired `session.answerQuestion` below

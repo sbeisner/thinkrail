@@ -161,6 +161,13 @@ export interface FileTab {
 	rendererId?: string;
 	viewState?: unknown;
 	loadedTick?: number;
+	reveal?: FileReveal;
+}
+export interface FileReveal {
+	line: number;
+	column?: number;
+	length?: number;
+	tick: number;
 }
 export interface ChatTab {
 	kind: "chat";
@@ -1199,6 +1206,12 @@ interface AppState {
 	) => CenterNavigationStamp | null;
 	noteNavigation: (workspaceId: string) => void;
 	setTabRenderer: (workspaceId: string, id: string, rendererId: string) => void;
+	revealFileTab: (
+		workspaceId: string,
+		path: string,
+		at: Omit<FileReveal, "tick">,
+		rendererId?: string,
+	) => void;
 	setTabViewState: (workspaceId: string, id: string, viewState: unknown) => void;
 	setDiffTabView: (id: string, view: DiffTabView) => void;
 	setDiffTabIgnoreWhitespace: (id: string, ignoreWhitespace: boolean) => void;
@@ -3123,6 +3136,25 @@ export const useAppStore = create<AppState>((set, get) => ({
 				return next;
 			}),
 		),
+	revealFileTab: (workspaceId, path, at, rendererId) =>
+		set((s) => {
+			const tab = (s.tabsByWorkspace[workspaceId] ?? []).find(
+				(candidate): candidate is FileTab => candidate.kind === "file" && candidate.path === path,
+			);
+			if (!tab) return {};
+			return patchResourceTab(s, workspaceId, tab.id, (current) => {
+				if (current.kind !== "file") return current;
+				const next: FileTab = {
+					...current,
+					reveal: { ...at, tick: (current.reveal?.tick ?? 0) + 1 },
+				};
+				if (rendererId && current.rendererId !== rendererId) {
+					next.rendererId = rendererId;
+					delete next.viewState;
+				}
+				return next;
+			});
+		}),
 	setTabViewState: (workspaceId, id, viewState) =>
 		set((s) =>
 			patchResourceTab(s, workspaceId, id, (tab) => {
