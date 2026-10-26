@@ -286,6 +286,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 				clearTerminalClient(clientKey);
 				releaseInterview(clientKey);
 				cancelMcpProbesOwnedBy(clientKey);
+				hostSearch().forgetClient(clientKey);
 			}, CLIENT_REPLAY_RETENTION_MS),
 		);
 	};
