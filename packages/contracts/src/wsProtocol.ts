@@ -131,7 +131,8 @@ export type TemplateReadLocation =
 	| { projectId: string; workspaceId?: never }
 	| { workspaceId?: never; projectId?: never };
 
-export const PROTOCOL_VERSION = 97;
+export const PROTOCOL_VERSION = 98;
+export const CHATS_PROTOCOL_VERSION = 98;
 export const SEARCH_PROTOCOL_VERSION = 97;
 export const RESOURCE_HISTORY_PROTOCOL_VERSION = 96;
 export const PROJECT_CLONE_PROTOCOL_VERSION = 95;
@@ -204,6 +205,21 @@ export interface ServerWelcome {
 	config: AppConfig;
 }
 
+/** A projectless chat: its `kind: "chat"` workspace in the Chats container plus the one session it owns. */
+export interface ChatCreateResult {
+	workspace: Workspace;
+	sessionId: string;
+	model: WireModel | null;
+	thinkingLevel: ThinkingLevel;
+}
+
+/** What deleting a chat would trash besides its transcripts: the files its folder holds (bounded count). */
+export interface ChatInspection {
+	files: number;
+	/** The count stopped at the bound; the folder holds more. */
+	truncated: boolean;
+}
+
 export interface WorkspaceRemoved {
 	projectId: string;
 	id: string;
@@ -250,6 +266,9 @@ export const WS_METHODS = {
 	workspaceSetSubagentsOverride: "workspace.setSubagentsOverride",
 	workspaceSetSubagentMaxConcurrent: "workspace.setSubagentMaxConcurrent",
 	workspaceSetDiffBase: "workspace.setDiffBase",
+	chatCreate: "chat.create",
+	chatDelete: "chat.delete",
+	chatInspect: "chat.inspect",
 	workspaceSettle: "workspace.settle",
 	workspaceUnsettle: "workspace.unsettle",
 	workspaceMarkUnread: "workspace.markUnread",
@@ -682,6 +701,9 @@ export interface WsMethodMap {
 		result: Ack;
 	};
 	"workspace.remove": { params: { id: string }; result: Ack };
+	"chat.create": { params: Record<string, never>; result: ChatCreateResult };
+	"chat.delete": { params: { workspaceId: string }; result: Ack };
+	"chat.inspect": { params: { workspaceId: string }; result: ChatInspection };
 	"workspace.diffStats": { params: { id: string }; result: DiffStats };
 	"workspace.setSkillOverride": {
 		params: { id: string; name: string; override: "on" | "off" | null };
@@ -1168,7 +1190,11 @@ export type WsErrorCode =
 	| "MCP_CONFIG_INVALID"
 	| "MCP_PATH_UNSAFE"
 	| "MCP_HANDLED_ELSEWHERE"
-	| "FILE_TOO_LARGE";
+	| "FILE_TOO_LARGE"
+	| "CHATS_CONTAINER"
+	| "CHAT_WORKSPACE"
+	| "CHATS_STORE_UNAVAILABLE"
+	| "NOT_A_CHAT";
 
 export interface WsResponse {
 	id: string;
