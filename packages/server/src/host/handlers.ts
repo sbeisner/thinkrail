@@ -244,6 +244,7 @@ import {
 	recoverChatSession,
 	seesChats,
 } from "./chats";
+import { continuationStatus, startContinuation } from "./continuations";
 import { nudgeBaseRefWorkspaces } from "./fsNudge";
 import { buildHistoryScope } from "./historyScope";
 import { provisionInitialTerminal } from "./initialTerminal";
@@ -739,6 +740,8 @@ const handlers: WsHandlers = {
 		return { ok: true } as const;
 	},
 	"chat.inspect": (params) => inspectChat(params.workspaceId),
+	"chat.continue": (params) => startContinuation(params.workspaceId, params.projectId),
+	"chat.continuationStatus": (params) => continuationStatus(params.operationId),
 	"workspace.openIn": (p) => {
 		openEditor(p.editor, getWorkspace(p.id).worktreePath);
 		return { ok: true } as const;
