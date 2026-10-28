@@ -63,7 +63,13 @@ export type {
 	MatchTerm,
 	MatchTier,
 } from "./match";
-export { compareMatches, MATCH_TIER, matchFields, parseMatchTerms } from "./match";
+export {
+	compareMatches,
+	foldMatchCase,
+	MATCH_TIER,
+	matchFields,
+	parseMatchTerms,
+} from "./match";
 export type * from "./nativeClient";
 export type * from "./piProtocol";
 export {
