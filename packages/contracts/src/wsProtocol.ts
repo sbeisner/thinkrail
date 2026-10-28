@@ -41,6 +41,10 @@ import type {
 	MergePrResult,
 	OpenBranchReview,
 	OpenPrResult,
+	PiPackageResourceType,
+	PiPackageScope,
+	PiPackageSummary,
+	PiPackagesCatalog,
 	PrBodySource,
 	Project,
 	ProjectPathStatus,
@@ -128,7 +132,8 @@ export type TemplateReadLocation =
 	| { projectId: string; workspaceId?: never }
 	| { workspaceId?: never; projectId?: never };
 
-export const PROTOCOL_VERSION = 97;
+export const PROTOCOL_VERSION = 98;
+export const PI_PACKAGES_PROTOCOL_VERSION = 98;
 export const RESOURCE_HISTORY_PROTOCOL_VERSION = 96;
 export const PROJECT_CLONE_PROTOCOL_VERSION = 95;
 export const ONBOARDING_PROTOCOL_VERSION = 94;
@@ -292,6 +297,13 @@ export const WS_METHODS = {
 	skillList: "skill.list",
 	skillsState: "skills.state",
 	extensionList: "extension.list",
+	packagesList: "packages.list",
+	packagesInstall: "packages.install",
+	packagesRemove: "packages.remove",
+	packagesUpdate: "packages.update",
+	packagesCheckUpdates: "packages.checkUpdates",
+	packagesSetResourceEnabled: "packages.setResourceEnabled",
+	packagesReveal: "packages.reveal",
 	localesList: "locales.list",
 	localesReveal: "locales.reveal",
 	themesList: "themes.list",
@@ -412,6 +424,7 @@ export const WS_CHANNELS = {
 	mcpStatus: "mcp.status",
 	localesChanged: "locales.changed",
 	themesChanged: "themes.changed",
+	packagesChanged: "packages.changed",
 } as const;
 
 type SameUnion<A extends B, B extends C, C = A> = A;
@@ -849,6 +862,31 @@ export interface WsMethodMap {
 	"skill.list": { params: { projectId: string }; result: SlashCommandInfo[] };
 	"skills.state": { params: { workspaceId: string }; result: SkillCatalogEntry[] };
 	"extension.list": { params: Record<string, never>; result: ExtensionCatalogEntry[] };
+	"packages.list": { params: { workspaceId?: string }; result: PiPackagesCatalog };
+	"packages.install": {
+		params: { source: string; scope: PiPackageScope; workspaceId?: string };
+		result: PiPackageSummary;
+	};
+	"packages.remove": {
+		params: { source: string; scope: PiPackageScope; workspaceId?: string };
+		result: Ack;
+	};
+	"packages.update": { params: { sources: string[]; workspaceId?: string }; result: Ack };
+	"packages.checkUpdates": {
+		params: { workspaceId?: string };
+		result: { source: string; scope: PiPackageScope }[];
+	};
+	"packages.setResourceEnabled": {
+		params: {
+			path: string;
+			type: PiPackageResourceType;
+			scope: PiPackageScope;
+			enabled: boolean;
+			workspaceId?: string;
+		};
+		result: Ack;
+	};
+	"packages.reveal": { params: { path: string; workspaceId?: string }; result: Ack };
 	"locales.list": { params: Record<string, never>; result: LocalLocalesSnapshot };
 	"locales.reveal": { params: Record<string, never>; result: Ack };
 	"themes.list": { params: Record<string, never>; result: UserThemesSnapshot };
