@@ -87,7 +87,9 @@ import {
 import {
 	buildResourceLoader,
 	disabledExtensions,
+	isLoaderPackagePolicyStale,
 	loadsDisabledExtensionSkills,
+	packagePolicyKey,
 	providerExtensionPaths,
 	toSkillCommands,
 } from "./extensions";
@@ -759,7 +761,8 @@ function applyExtensionTools(entry: Entry, { allowReload = true } = {}): void {
 	if (!allowReload || entry.reloadRunning) return;
 	if (
 		enabledExtensionMissing(session, disabled) ||
-		loadsDisabledExtensionSkills(session.resourceLoader.getSkills().skills)
+		loadsDisabledExtensionSkills(session.resourceLoader.getSkills().skills) ||
+		isLoaderPackagePolicyStale(session.resourceLoader)
 	) {
 		void requestSessionReload(session.sessionId).catch((error) => {
 			if (!entry.disposed && !entry.resourcesClosing && !hasFailedMcpReload(session.sessionId)) {
@@ -806,7 +809,7 @@ function enabledExtensionMissing(session: AgentSession, disabled: ReadonlySet<st
 
 let extensionPolicy = { key: "", generation: 0 };
 function noteExtensionPolicy(): void {
-	const key = [...disabledExtensions()].sort().join("\n");
+	const key = `${[...disabledExtensions()].sort().join("\n")}\0${packagePolicyKey()}`;
 	if (key !== extensionPolicy.key) {
 		extensionPolicy = { key, generation: extensionPolicy.generation + 1 };
 	}
