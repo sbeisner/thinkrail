@@ -214,7 +214,6 @@ import {
 	isChatsContainerId,
 	isChatWorkspace,
 	isChatWorkspaceId,
-	isUnderChatsRoot,
 	listAllWorkspaceRecords,
 	listExistingWorktrees,
 	listWorkspaceRecords,
@@ -240,6 +239,7 @@ import {
 	assertSessionDeletable,
 	createChat,
 	deleteChat,
+	historyHiddenCwd,
 	inspectChat,
 	recoverChatSession,
 	seesChats,
@@ -1378,7 +1378,7 @@ const handlers: WsHandlers = {
 			p.scope,
 			listProjects(),
 			(projectId) => listWorkspaceRecords(projectId),
-			seesChats(ctx.protocolVersion) ? undefined : isUnderChatsRoot,
+			historyHiddenCwd(ctx.protocolVersion),
 		);
 		return getHistoryIndex().search({
 			query: p.query,
