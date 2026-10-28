@@ -810,7 +810,7 @@ export default function ChatView({
 							now={now}
 							authoritative={resources.authoritative}
 							loading={resources.loading}
-							stale={resources.stale}
+							staleness={resources.staleness}
 							error={resources.projection?.error ?? null}
 							actions={resources.actions}
 							newIds={freshIds}
@@ -869,6 +869,7 @@ export default function ChatView({
 					freshCount={freshResults.count}
 					now={now}
 					authoritative={resources.authoritative}
+					staleness={resources.staleness}
 					actions={resources.actions}
 					onInspect={openInspector}
 					onOpenFinished={openFinished}
