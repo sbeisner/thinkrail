@@ -262,7 +262,7 @@ import {
 	mcpTestConnection,
 	mcpUpdate,
 } from "./mcp";
-import { resolveNewChatModel } from "./newChatModel";
+import { noteNewChat, resolveNewChatModel } from "./newChatModel";
 import { planReviewRunning } from "./planReviewQueue";
 import {
 	additionalCapture,
@@ -1080,7 +1080,7 @@ const handlers: WsHandlers = {
 	"session.create": async (p) => {
 		const ws = getWorkspace(p.workspaceId);
 		if (isChatWorkspace(ws)) {
-			const { workspace: _workspace, ...created } = await recoverChatSession(ws.id);
+			const { workspace: _workspace, ...created } = await recoverChatSession(ws.id, p);
 			return created;
 		}
 		ensureWorkspaceScratchDir(ws);
@@ -1091,11 +1091,7 @@ const handlers: WsHandlers = {
 			...(defaults.model ? { model: defaults.model } : {}),
 			thinkingLevel: defaults.thinkingLevel,
 		});
-		if (p.model && created.model) noteRecentModel(created.model);
-		trackChatStarted({
-			sessionId: created.sessionId,
-			model: defaults.model ? created.model : null,
-		});
+		noteNewChat(p, defaults, created);
 		return created;
 	},
 	"session.prompt": (p, ctx) => {
