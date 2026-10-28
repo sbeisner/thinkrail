@@ -63,6 +63,13 @@ export {
 export { preferredDefaultModel } from "./modelDefaults";
 export * from "./oneshot";
 export {
+	handlePiSettingsFileChanged,
+	handleProjectPiSettingsChanged,
+	primeUserPiSettings,
+	refreshPiPackages,
+	setPiPackagesPublisher,
+} from "./piPackages";
+export {
 	activatePiRuntimeGeneration,
 	configurePiRuntime,
 	configurePiRuntimeFactory,
