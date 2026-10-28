@@ -53,6 +53,7 @@ import {
 	setSessionResourcesPublisher,
 	setSessionStatePublisher,
 	setSkillAdmissionResolver,
+	setSpecsEnabledResolver,
 	setSubagentConcurrencyResolver,
 	setSubagentsEnabledResolver,
 	setTitleToolHost,
@@ -637,6 +638,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 	setAgentReviewEnabledResolver(
 		(workspaceId) => !isChatWorkspaceId(workspaceId) && getConfig().agentReviewEnabled !== false,
 	);
+	setSpecsEnabledResolver((workspaceId) => !isChatWorkspaceId(workspaceId));
 
 	setDisabledExtensionsResolver(() => new Set(getConfig().disabledExtensions));
 
