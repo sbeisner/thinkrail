@@ -1056,6 +1056,7 @@ interface AppState {
 	notificationPromptOpen: boolean;
 	searchOpen: boolean;
 	searchSession: number;
+	sessionTitleRevision: number;
 	doubleShiftSearch: boolean;
 	theme: ThemeId;
 	themeMode: ThemeMode;
@@ -2325,6 +2326,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 	notificationPromptOpen: false,
 	searchOpen: false,
 	searchSession: 0,
+	sessionTitleRevision: 0,
 	doubleShiftSearch: true,
 	theme: DEFAULT_CONFIG.theme,
 	themeMode: DEFAULT_CONFIG.themeMode,
@@ -4222,6 +4224,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					const title = event.name?.trim() ?? "";
 					const renamed = renameChat(state, sessionId, title);
 					if (renamed && Object.keys(renamed).length > 0) state = { ...state, ...renamed };
+					state = { ...state, sessionTitleRevision: state.sessionTitleRevision + 1 };
 				}
 				const runtime = sessions[sessionId];
 				if (!runtime) continue;
