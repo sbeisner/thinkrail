@@ -282,7 +282,8 @@ export function Shell() {
 			<SearchPaletteHost
 				onNewWorkspace={(projectId, initialPrompt) =>
 					setNewWorkspace(
-						initialPrompt === undefined ? { projectId } : { projectId, initialPrompt },
+						(open) =>
+							open ?? (initialPrompt === undefined ? { projectId } : { projectId, initialPrompt }),
 					)
 				}
 				onToggleProjectsHome={homeProjects.toggle}
