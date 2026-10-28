@@ -633,7 +633,9 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 		}
 	});
 
-	setAgentReviewEnabledResolver(() => getConfig().agentReviewEnabled !== false);
+	setAgentReviewEnabledResolver(
+		(workspaceId) => !isChatWorkspaceId(workspaceId) && getConfig().agentReviewEnabled !== false,
+	);
 
 	setDisabledExtensionsResolver(() => new Set(getConfig().disabledExtensions));
 
