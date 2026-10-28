@@ -871,7 +871,10 @@ export interface WsMethodMap {
 		params: { source: string; scope: PiPackageScope; workspaceId?: string };
 		result: Ack;
 	};
-	"packages.update": { params: { sources: string[]; workspaceId?: string }; result: Ack };
+	"packages.update": {
+		params: { packages: { source: string; scope: PiPackageScope }[]; workspaceId?: string };
+		result: Ack;
+	};
 	"packages.checkUpdates": {
 		params: { workspaceId?: string };
 		result: { source: string; scope: PiPackageScope }[];
