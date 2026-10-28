@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, statSync } from "node:fs";
 import type {
 	Ack,
 	OpenBranchReview,
@@ -105,7 +105,7 @@ import { listAvailableEditors, openEditor, revealInFileManager } from "../editor
 import { hostEnvironmentStatus, updateHostEnvironment } from "../environment";
 import { listExtensionCatalog } from "../extensions";
 import { recordAcceptedMessage, respondToInterview } from "../feedback";
-import { readDir, readFile } from "../fs";
+import { readDir, readFile, resolveWorktreeFile } from "../fs";
 import {
 	commitsAheadOf,
 	countPushDivergence,
@@ -761,6 +761,12 @@ const handlers: WsHandlers = {
 	},
 	"fs.readFile": (p) => {
 		void ensureWatch(p.workspaceId);
+		if (
+			p.maxBytes !== undefined &&
+			statSync(resolveWorktreeFile(p.workspaceId, p.path)).size > p.maxBytes
+		) {
+			throw new CodedError("FILE_TOO_LARGE", "The file is larger than the read allows");
+		}
 		return readFile(p.workspaceId, p.path);
 	},
 	"spec.graph": (p) => {
