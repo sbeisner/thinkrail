@@ -24,6 +24,7 @@ import {
 	cancelAllMcpProbes,
 	cancelMcpProbesOwnedBy,
 	disposeAllSessions,
+	getSessionAttribution,
 	getSessionWorkspaceId,
 	initializeSessionStates,
 	isProjectSkillPath,
@@ -859,7 +860,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 
 	setExtUiPublisher((request, audience) => {
 		const frame = JSON.stringify({ channel: WS_CHANNELS.piExtensionUi, data: request });
-		const workspaceId = getSessionWorkspaceId(request.sessionId);
+		const workspaceId = getSessionAttribution(request.sessionId);
 		const aboutChat = workspaceId !== undefined && isChatWorkspaceId(workspaceId);
 		if (!audience && !aboutChat) {
 			server.publish(WS_CHANNELS.piExtensionUi, frame);
