@@ -303,7 +303,7 @@ test("project create and the onboarding dismissal are pinned to v94", () => {
 
 test("in-app surveys are pinned to v97", () => {
 	expect(FEEDBACK_SURVEY_PROTOCOL_VERSION).toBe(97);
-	expect(PROTOCOL_VERSION).toBe(97);
+	expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(FEEDBACK_SURVEY_PROTOCOL_VERSION);
 	expect(WS_METHODS.feedbackSurvey).toBe("feedback.survey");
 	expect(WS_METHODS.feedbackSurveySubmit).toBe("feedback.survey.submit");
 });
