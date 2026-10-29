@@ -1312,7 +1312,9 @@ export type WsErrorCode =
 	| "CHAT_DELETING"
 	| "CHAT_DELETION_PENDING"
 	| "CONTINUATION_UNKNOWN"
-	| "CONTINUATION_IN_FLIGHT";
+	| "CONTINUATION_IN_FLIGHT"
+	| "TEXT_SEARCH_TIMEOUT"
+	| "TEXT_SEARCH_FAILED";
 
 export interface WsResponse {
 	id: string;

@@ -491,6 +491,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 				if (sockets.get(clientKey) === ws) {
 					sockets.delete(clientKey);
 					terminalBackpressured.delete(clientKey);
+					hostSearch().cancelText(clientKey);
 				}
 				if (sockets.has(clientKey) || reapTimers.has(clientKey)) return;
 				armClientReap(clientKey);
