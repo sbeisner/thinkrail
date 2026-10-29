@@ -876,7 +876,7 @@ export interface WsMethodMap {
 		result: Ack;
 	};
 	"packages.checkUpdates": {
-		params: { workspaceId?: string };
+		params: { workspaceId?: string; force?: boolean };
 		result: { source: string; scope: PiPackageScope }[];
 	};
 	"packages.setResourceEnabled": {
@@ -1208,7 +1208,6 @@ export type WsErrorCode =
 	| "PACKAGE_UNTRUSTED"
 	| "PACKAGE_UNKNOWN"
 	| "PACKAGE_INSTALL_FAILED"
-	| "PACKAGE_NOTHING_LOADABLE"
 	| "PACKAGE_REMOVE_FAILED"
 	| "PACKAGE_UPDATE_FAILED"
 	| "PACKAGE_SETTINGS_WRITE_FAILED";

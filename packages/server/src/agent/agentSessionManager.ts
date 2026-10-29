@@ -92,6 +92,7 @@ import {
 	packagePolicyKey,
 	providerExtensionPaths,
 	toSkillCommands,
+	withoutDisabledPackages,
 } from "./extensions";
 import {
 	createMcpSessionHost,
@@ -997,7 +998,10 @@ function releasePreflights(entry: Entry): void {
 const SESSION_SETTINGS_OVERRIDES = { images: { autoResize: false } };
 
 export function buildSessionSettings(cwd: string, projectTrusted: boolean): SettingsManager {
-	const settings = SettingsManager.create(cwd, undefined, { projectTrusted });
+	const settings = withoutDisabledPackages(
+		SettingsManager.create(cwd, undefined, { projectTrusted }),
+		cwd,
+	);
 	const reload = settings.reload.bind(settings);
 	settings.reload = async () => {
 		await reload();
