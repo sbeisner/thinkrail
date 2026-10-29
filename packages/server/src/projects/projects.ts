@@ -10,7 +10,7 @@ import type {
 	ProjectPathStatus,
 } from "@thinkrail/contracts";
 import { CodedError } from "@thinkrail/shared/codedError";
-import { canonicalPath, git } from "../git";
+import { canonicalPath, git, isMultiRepoFolder } from "../git";
 import { loadProjects, loadWorkspaces, saveProjects } from "../persistence";
 
 type ProjectPublisher = (project: Project) => void;
@@ -88,13 +88,16 @@ export function getProjects(): Project[] {
 
 export function openProject(inputPath: string, displayName?: string): Project {
 	const path = resolveProjectPath(inputPath);
-	const root = gitToplevel(path);
+	const multiRepo = isMultiRepoFolder(path);
+	const root = multiRepo ? path : gitToplevel(path);
 	if (!root) throw new CodedError("NOT_GIT", `Not a git repository: ${path}`);
 
 	const projects = getProjects();
 	const existing = projects.find((p) => p.path === root);
 	if (existing) {
 		delete existing.closed;
+		if (multiRepo) existing.kind = "multiRepo";
+		else delete existing.kind;
 		existing.lastOpened = Date.now();
 		saveProjects(projects);
 		emit(existing);
@@ -116,6 +119,7 @@ export function openProject(inputPath: string, displayName?: string): Project {
 		path: root,
 		slug: uniqueSlug(slugify(basename(root)), taken),
 		lastOpened: Date.now(),
+		...(multiRepo ? { kind: "multiRepo" as const } : {}),
 		piResourceTrust: piTrustSeed?.(root) ? "granted" : "untrusted",
 	};
 	projects.push(project);
@@ -361,6 +365,7 @@ function inspectResolvedProjectPath(path: string): ProjectPathStatus {
 		return { kind: "missing" };
 	}
 	if (!stat.isDirectory()) return { kind: "notDirectory" };
+	if (isMultiRepoFolder(path)) return { kind: "multiRepo" };
 	return { kind: gitToplevel(path) ? "repo" : "initable" };
 }
 
@@ -373,7 +378,7 @@ export function initProject(inputPath: string): Project {
 	const status = inspectResolvedProjectPath(path);
 	if (status.kind === "missing") throw new Error(`No such folder: ${path}`);
 	if (status.kind === "notDirectory") throw new Error(`Not a folder: ${path}`);
-	if (status.kind === "repo") return openProject(path);
+	if (status.kind === "repo" || status.kind === "multiRepo") return openProject(path);
 	bootstrapRepository(path);
 	return openProject(path);
 }

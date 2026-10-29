@@ -102,6 +102,45 @@ afterEach(() => {
 	else process.env.THINKRAIL_DATA_DIR = savedDataDir;
 });
 
+function seedMultiRepoProject(): string {
+	const parent = join(dataDir, "overwatch");
+	for (const child of ["core", "dashboard"]) {
+		const path = join(parent, child);
+		mkdirSync(path, { recursive: true });
+		git(path, "init", "-b", "main");
+		git(path, "config", "user.email", "t@thinkrail.test");
+		git(path, "config", "user.name", "test");
+		git(path, "config", "commit.gpgsign", "false");
+		writeFileSync(join(path, "README.md"), "# child\n");
+		git(path, "add", "-A");
+		git(path, "commit", "-m", "init");
+	}
+	writeFileSync(
+		join(dataDir, "projects.json"),
+		JSON.stringify([
+			{
+				id: "mr",
+				name: "overwatch",
+				path: parent,
+				slug: "overwatch",
+				lastOpened: 1,
+				kind: "multiRepo",
+			},
+		]),
+	);
+	return parent;
+}
+
+test("a multi-repo project has only its Default workspace, marked multi-repo", async () => {
+	const parent = seedMultiRepoProject();
+	const [def] = await listWorkspaces("mr");
+	expect(def).toMatchObject({ kind: "default", multiRepo: true, worktreePath: parent, branch: "" });
+	await expect(createWorkspace("mr")).rejects.toMatchObject({ code: "MULTI_REPO_UNSUPPORTED" });
+	expect(await listExistingWorktrees("mr")).toEqual([]);
+	writeFileSync(join(parent, "core", "README.md"), "# child\nmore\n");
+	expect((await listWorkspaces("mr"))[0]?.diffStats).toEqual({ added: 1, removed: 0 });
+});
+
 test("createWorkspace cuts a fresh branch from baseRef and records it as the base", async () => {
 	git(repo, "branch", "feature/base");
 	git(repo, "switch", "feature/base");

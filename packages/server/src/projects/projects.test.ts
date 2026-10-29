@@ -163,6 +163,27 @@ test("inspectProjectPath: a plain directory is `initable`", () => {
 	expect(inspectProjectPath(dir)).toEqual({ kind: "initable" });
 });
 
+test("a folder of git repos inspects and opens as one multi-repo project", () => {
+	const parent = join(dataDir, "overwatch");
+	makeRepo(join(parent, "core"));
+	makeRepo(join(parent, "dashboard"));
+	expect(inspectProjectPath(parent)).toEqual({ kind: "multiRepo" });
+	expect(inspectProjectPath(join(parent, "core"))).toEqual({ kind: "repo" });
+
+	const project = openProject(parent);
+	expect(project).toMatchObject({ kind: "multiRepo", path: parent, name: "overwatch" });
+	expect(initProject(parent).id).toBe(project.id);
+	expect(existsSync(join(parent, ".git"))).toBe(false);
+});
+
+test("a folder of git repos inside an enclosing repo still opens as itself", () => {
+	const outer = join(dataDir, "outer");
+	makeRepo(outer);
+	const parent = join(outer, "group");
+	makeRepo(join(parent, "core"));
+	expect(openProject(parent)).toMatchObject({ kind: "multiRepo", path: parent });
+});
+
 test("inspectProjectPath: a git repo (and any subdirectory) is `repo`", () => {
 	const repo = join(dataDir, "repo");
 	makeRepo(repo);
@@ -183,7 +204,7 @@ test("host-home paths resolve consistently across inspect, open, and init", () =
 	process.env.HOME = home;
 	process.env.USERPROFILE = home;
 	try {
-		expect(inspectProjectPath("~")).toEqual({ kind: "initable" });
+		expect(inspectProjectPath("~")).toEqual({ kind: "multiRepo" });
 		expect(inspectProjectPath("~/repo")).toEqual({ kind: "repo" });
 		expect(openProject("~/repo").path).toBe(realpathSync(repo));
 		expect(inspectProjectPath("~/plain")).toEqual({ kind: "initable" });

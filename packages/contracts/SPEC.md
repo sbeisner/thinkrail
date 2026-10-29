@@ -22,7 +22,8 @@ default, narrow cross-ring guards, and the quit-confirmation rule both clients d
   registries, and the protocol version. Including **`WsErrorCode`** — the closed set of failures the *host
   names* (`WsResponse.errorCode`, today `UNKNOWN_COMMIT`, `PUSH_AUTH_FAILED`,
   `NOT_GIT` and `ALREADY_OPEN` (the two `project.open` refusals: a folder that is not a repository, and a
-  folder already owned by a workspace),
+  folder already owned by a workspace), `MULTI_REPO_UNSUPPORTED` (a single-repo action — worktree
+  workspaces, push/PR, a sha-pinned diff scope — on a multi-repo folder project),
   `PROJECT_CLONE_INVALID`, `PROJECT_CLONE_FAILED`, and `PROJECT_CLONE_CLEANUP_FAILED` (input
   correction, Git failure, and incomplete cleanup requiring filesystem intervention),
   `RESOURCE_UNAVAILABLE`, and `SUBAGENT_TRANSCRIPT_NOT_FOUND` — the latter is

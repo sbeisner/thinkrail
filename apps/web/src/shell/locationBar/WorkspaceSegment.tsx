@@ -88,7 +88,7 @@ export function WorkspaceSegment({
 	workspace: Workspace | null;
 	activeSettled: boolean;
 	now: number;
-	onNewWorkspace: () => void;
+	onNewWorkspace?: () => void;
 }) {
 	const t = useT();
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -356,14 +356,18 @@ export function WorkspaceSegment({
 								</DropdownMenuSubContent>
 							</DropdownMenuSub>
 						) : null}
-						<DropdownMenuSeparator />
-						<DropdownMenuItem data-testid="scope-workspace-new" onSelect={onNewWorkspace}>
-							<Plus />
-							{t("shell.location.workspace.new")}
-							<span className="ml-auto pl-8 text-text-subtle tr-text-metadata">
-								{platformShortcutLabel("N")}
-							</span>
-						</DropdownMenuItem>
+						{onNewWorkspace ? (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem data-testid="scope-workspace-new" onSelect={onNewWorkspace}>
+									<Plus />
+									{t("shell.location.workspace.new")}
+									<span className="ml-auto pl-8 text-text-subtle tr-text-metadata">
+										{platformShortcutLabel("N")}
+									</span>
+								</DropdownMenuItem>
+							</>
+						) : null}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			)}

@@ -53,6 +53,7 @@ import { useNow } from "../components/useNow";
 import {
 	isDefaultWorkspace,
 	isExternalWorkspace,
+	isMultiRepoProject,
 	SETTLED_SHELF_MORE,
 	SETTLED_SHELF_PAGE,
 	type SettledReason,
@@ -617,15 +618,17 @@ function ProjectRow({
 					{workspaceCount}
 				</span>
 			)}
-			<IconButton
-				icon={Plus}
-				label={createWorkspaceLabel}
-				variant="ghost"
-				size="s"
-				className="shrink-0"
-				data-testid="add-workspace"
-				onClick={onAddWorkspace}
-			/>
+			{isMultiRepoProject(project) ? null : (
+				<IconButton
+					icon={Plus}
+					label={createWorkspaceLabel}
+					variant="ghost"
+					size="s"
+					className="shrink-0"
+					data-testid="add-workspace"
+					onClick={onAddWorkspace}
+				/>
+			)}
 		</div>
 	);
 	return (
@@ -656,27 +659,31 @@ function ProjectRow({
 						openingDialogRef.current = false;
 					}}
 				>
-					<ContextMenuItem
-						data-testid="project-menu-create-workspace"
-						onSelect={(event) => {
-							event.preventDefault();
-							openDialogAfterMenu(onAddWorkspaceFromMenu);
-						}}
-					>
-						<Plus />
-						{t("panels.projectTree.createWorkspace")}
-					</ContextMenuItem>
-					<ContextMenuItem
-						data-testid="project-menu-open-existing-worktree"
-						onSelect={(event) => {
-							event.preventDefault();
-							openDialogAfterMenu(onOpenExistingWorktree);
-						}}
-					>
-						<FolderOpen />
-						{t("panels.projectTree.openExistingWorktree")}
-					</ContextMenuItem>
-					<ContextMenuSeparator />
+					{isMultiRepoProject(project) ? null : (
+						<>
+							<ContextMenuItem
+								data-testid="project-menu-create-workspace"
+								onSelect={(event) => {
+									event.preventDefault();
+									openDialogAfterMenu(onAddWorkspaceFromMenu);
+								}}
+							>
+								<Plus />
+								{t("panels.projectTree.createWorkspace")}
+							</ContextMenuItem>
+							<ContextMenuItem
+								data-testid="project-menu-open-existing-worktree"
+								onSelect={(event) => {
+									event.preventDefault();
+									openDialogAfterMenu(onOpenExistingWorktree);
+								}}
+							>
+								<FolderOpen />
+								{t("panels.projectTree.openExistingWorktree")}
+							</ContextMenuItem>
+							<ContextMenuSeparator />
+						</>
+					)}
 					{canRename ? (
 						<ContextMenuItem
 							data-testid="project-menu-rename"

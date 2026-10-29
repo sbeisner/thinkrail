@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { CONTENT_SNIFF_BYTES, classifyBytes, mimeFromPath, resolveWorktreeFile } from "../fs";
-import { readBlobSizeAtAsync, readBlobStreamAtAsync } from "../git";
+import { readBlobSizeAtAsync, readBlobStreamAtAsync, routeRepoPath } from "../git";
 import { loadWorkspaces } from "../persistence";
 
 export const FILES_PREFIX = "/files/";
@@ -75,15 +75,17 @@ export async function serveBlob(pathname: string, signal?: AbortSignal): Promise
 	if (workspace === null || blob === null || relPath === null) return notFound();
 	if (!OID.test(blob.segment)) return notFound();
 	try {
-		const worktreePath = loadWorkspaces().find(
-			(candidate) => candidate.id === workspace.segment,
-		)?.worktreePath;
-		if (worktreePath === undefined) return notFound();
+		const ws = loadWorkspaces().find((candidate) => candidate.id === workspace.segment);
+		if (ws === undefined) return notFound();
 		resolveWorktreeFile(workspace.segment, relPath);
-		const size = await readBlobSizeAtAsync(worktreePath, blob.segment, relPath);
+		const route = routeRepoPath(ws, relPath);
+		if (ws.multiRepo && !route) return notFound();
+		const repoPath = route?.repoPath ?? ws.worktreePath;
+		const repoRelPath = route?.relPath ?? relPath;
+		const size = await readBlobSizeAtAsync(repoPath, blob.segment, repoRelPath);
 		if (size === null) return notFound();
 		if (size > BLOB_SIZE_LIMIT) return new Response("blob too large", { status: 413 });
-		const stream = await readBlobStreamAtAsync(worktreePath, blob.segment, relPath, {
+		const stream = await readBlobStreamAtAsync(repoPath, blob.segment, repoRelPath, {
 			timeoutMs: BLOB_STREAM_TIMEOUT_MS,
 			...(signal ? { signal } : {}),
 		});

@@ -148,6 +148,11 @@ place as `kind: "external"` — outside the data dir, never created or mutated h
   never see the user's repo or an attached checkout, however a corrupt/hand-edited record got there), and
   `removeWorkspace(id)` (the synchronous composition of the two, kept for callers/tests that want the whole
   archive in one call).
+- **Multi-repo projects** (`Project.kind: "multiRepo"`) have **only** the Default workspace, stamped
+  `multiRepo: true` with empty `branch`/`baseBranch` (folder truth is per child repo, so none is recorded
+  and no git runs at the folder root). `createWorkspace` and opening a non-root existing worktree throw
+  `MULTI_REPO_UNSUPPORTED`; `listExistingWorktrees` returns none; `diffStats` sums each child repo's
+  branch-scope `--shortstat` (the git module's `childRepoTargets`).
 - **Default workspace (`kind: "default"`):** exactly one per project. `listWorkspaces` **ensures** it
   — find-or-create by `projectId`+`kind` (id a plain `randomUUID`; the `kind` field is the marker,
   never an id convention), **collapsing duplicates** defensively if out-of-band state churn ever

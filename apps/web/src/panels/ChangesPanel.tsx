@@ -93,7 +93,7 @@ export function ChangesPanel({
 		failed: branchesFailed,
 		refreshing: branchesRefreshing,
 		refresh: refreshBranches,
-	} = useBranchList(workspace?.projectId ?? null);
+	} = useBranchList(workspace && !workspace.multiRepo ? workspace.projectId : null);
 
 	const pointAt = async (ref: string) => {
 		try {
@@ -168,7 +168,7 @@ export function ChangesPanel({
 						scope={scope}
 						onSelectScope={(next) => setDiffScope(workspaceId, next)}
 					/>
-					{workspace ? (
+					{workspace && !workspace.multiRepo ? (
 						<div className="flex min-w-0 max-w-[200px]">
 							<BranchPicker
 								branches={branches}

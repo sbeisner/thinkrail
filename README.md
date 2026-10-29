@@ -1,5 +1,8 @@
 # ThinkRail
 
+> **Fork note:** this fork adds multi-repo folder projects and Anthropic API-key setup notes —
+> see [FORK.md](FORK.md).
+
 [![JetBrains incubator project](https://jb.gg/badges/incubator-plastic.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 [![GitHub stars](https://img.shields.io/github/stars/JetBrains/thinkrail?style=social)](https://star-history.com/#JetBrains/thinkrail&Date)
 [![Discord](https://img.shields.io/badge/Discord-Join%20the%20chat-5865F2?logo=discord&logoColor=white)](https://thinkrail.ai/discord)

@@ -308,6 +308,18 @@ ref off the workspace-create critical path.
   `gitignored`, so the Files tree can dim them. It never throws: a non-repository, a failure or a timeout
   reports nothing. Names git must C-quote (a `"`, `\` or control character) are never reported, because
   `check-ignore -z` needs stdin, which the bounded runners do not offer.
+  **Multi-repo routing** (`multiRepo.ts`): a folder is multi-repo when it has no `.git` of its own and at
+  least one immediate, non-dot child does (`isMultiRepoFolder`); child repos are re-listed on every read, so
+  a repo cloned into the folder later just appears. A `Workspace.multiRepo` workspace never runs git at its
+  own root — that would reach an *enclosing* repo (a dotfiles repo in `~`) — so every read routes a
+  `<child>/<path>` through **`routeRepoPath`** to `(child repo, repo-relative path)`. `gitStatus` runs the
+  single-repo pass per child (`childRepoTargets`: each child against its own `resolveDefaultBranch`) and
+  prefixes paths with the child folder; **`routedDiffRange(ws, path, scope)`** is the one per-file
+  resolution `gitDiffFile`, `changes` and the host's `/blob` route share; **`workspaceIgnoredPaths`** groups
+  `fs.readDir` paths per child. Only the `branch` and `uncommitted` scopes exist for multi-repo — a sha or
+  tree is ambiguous across repos — and any other scope, and `resolveDiffRange`/`listBranches` on the
+  multi-repo root itself, throw `MULTI_REPO_UNSUPPORTED` (**`assertSingleRepo`** is the host's guard for
+  push/PR). Paths outside any child repo have no git status.
 - **Public surface (barrel):** `git`, `gitAsync`, `gitAsyncBytes`, `gitAsyncStream`, `nonInteractiveGitEnv`, `remoteRefOid`, `remoteTrackingRef`, `gitStatus`,
   `gitUncommittedPaths`, `gitDiffFile`,
   `readBlobAt`, `readBlobBytesAt`, `readBlobBytesAtAsync`, `readBlobStreamAtAsync`, `readBlobSizeAtAsync`,
@@ -317,7 +329,8 @@ ref off the workspace-create critical path.
   `resolveDiffRange`, `changedFileArgs`, `diffBaseRef`, `resolveCommitOid`, `DiffRange`, `isSafeRef`,
   `assertSafeRef`, `listBranches`, `resolveDefaultBranch`, `tryCurrentBranch`, `currentBranch`,
   `canonicalPath`, `resolveListedCommit`, `prefetchBranch`, `countPushDivergence`, `listRemotes`, `remoteNameOf`,
-  `snapshotWorktree`, `ignoredPaths`.
+  `snapshotWorktree`, `ignoredPaths`, `workspaceIgnoredPaths`, `isMultiRepoFolder`, `routeRepoPath`,
+  `assertSingleRepo`, `childRepoTargets`, `RepoTarget`, `routedDiffRange`.
 - **Allowed deps:** `persistence` (workspace + project lookup), `log`; `fs` (`resourceMeta`/`decodeText` —
   the one content classification, so a diff side's metadata cannot disagree with `fs.readFile`'s);
   `contracts` (`Git*`/`BranchList`/`ResourceMeta` types);

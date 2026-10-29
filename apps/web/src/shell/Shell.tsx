@@ -16,6 +16,7 @@ import { SurveyWindow } from "../panels/SurveyWindow";
 import { Toaster } from "../panels/Toaster";
 import { useBranchStatus } from "../panels/useBranchStatus";
 import {
+	isMultiRepoProject,
 	SettingsSection,
 	selectActiveWorkspace,
 	selectAnalyticsConsentPromptOpen,
@@ -152,7 +153,7 @@ export function Shell() {
 					},
 				}
 			: {}),
-		...(contextProject
+		...(contextProject && !isMultiRepoProject(contextProject)
 			? { onNewWorkspace: () => setNewWorkspaceProjectId(contextProject.id) }
 			: {}),
 		onSessionSwitcher: () => useAppStore.getState().toggleSessionSwitcher(),
@@ -178,7 +179,9 @@ export function Shell() {
 							branchStatus={branchStatus}
 							noteOpenReview={noteOpenReview}
 							refreshBranchStatus={refreshBranchStatus}
-							onNewWorkspace={() => setNewWorkspaceProjectId(contextProject.id)}
+							{...(isMultiRepoProject(contextProject)
+								? {}
+								: { onNewWorkspace: () => setNewWorkspaceProjectId(contextProject.id) })}
 						/>
 					) : null}
 				</div>

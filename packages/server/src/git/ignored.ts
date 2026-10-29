@@ -1,4 +1,7 @@
+import { join } from "node:path";
+import type { Workspace } from "@thinkrail/contracts";
 import { gitAsync } from "./gitExec";
+import { routeRepoPath } from "./multiRepo";
 
 const MAX_ARGS_CHARS = 24_000;
 const TIMEOUT_MS = 10_000;
@@ -40,5 +43,26 @@ export async function ignoredPaths(
 			if (line && !line.startsWith('"')) ignored.add(line);
 		}
 	}
+	return ignored;
+}
+
+export async function workspaceIgnoredPaths(
+	ws: Pick<Workspace, "worktreePath" | "multiRepo">,
+	paths: readonly string[],
+): Promise<Set<string>> {
+	if (!ws.multiRepo) return ignoredPaths(ws.worktreePath, paths);
+	const byRepo = new Map<string, string[]>();
+	for (const path of paths) {
+		const route = routeRepoPath(ws, path);
+		if (!route?.relPath) continue;
+		byRepo.set(route.repo, [...(byRepo.get(route.repo) ?? []), route.relPath]);
+	}
+	const ignored = new Set<string>();
+	await Promise.all(
+		[...byRepo].map(async ([repo, relPaths]) => {
+			for (const relPath of await ignoredPaths(join(ws.worktreePath, repo), relPaths))
+				ignored.add(`${repo}/${relPath}`);
+		}),
+	);
 	return ignored;
 }

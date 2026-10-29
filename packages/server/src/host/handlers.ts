@@ -119,18 +119,19 @@ import {
 } from "../feedback";
 import { readDir, readFile } from "../fs";
 import {
+	assertSingleRepo,
 	commitsAheadOf,
 	countPushDivergence,
 	countPushTargetDivergence,
 	gitDiffFile,
 	gitStatus,
-	ignoredPaths,
 	listBranches,
 	listCommits,
 	originUrls,
 	type PushTargetStatus,
 	prefetchBranch,
 	remoteRefOid,
+	workspaceIgnoredPaths,
 } from "../git";
 import { githubAuthStatus, githubRefresh } from "../github";
 import { clampLimit, getHistoryIndex } from "../history";
@@ -625,6 +626,7 @@ const handlers: WsHandlers = {
 	},
 	"workspace.openReview": async (p, ctx) => {
 		const ws = getWorkspace(p.workspaceId);
+		if (ws.multiRepo) return null;
 		const fresh = shouldRefreshOpenReview(p.allowCached);
 		const [outcome, divergence] = await Promise.all([
 			findBranchReviewOutcome(ws.worktreePath, ws.branch, { fresh }),
@@ -643,6 +645,16 @@ const handlers: WsHandlers = {
 	},
 	"workspace.branchStatus": async (p, ctx) => {
 		const ws = getWorkspace(p.workspaceId);
+		if (ws.multiRepo)
+			return {
+				hasOrigin: false,
+				provider: null,
+				pushesElsewhere: false,
+				published: false,
+				aheadOfBase: 0,
+				onBase: true,
+				review: null,
+			};
 		const fresh = shouldRefreshOpenReview(p.allowCached);
 		const origin = await originUrls(ws.worktreePath);
 		const splitPushUrl = origin.push !== origin.fetch ? origin.push : null;
@@ -676,6 +688,7 @@ const handlers: WsHandlers = {
 		};
 	},
 	"workspace.push": async (p) => {
+		assertSingleRepo(getWorkspace(p.workspaceId));
 		recordWorkspaceActivity(p.workspaceId);
 		return pushBranch(p);
 	},
@@ -734,20 +747,24 @@ const handlers: WsHandlers = {
 		body: await suggestPrDescription(await prDraftInput(params)),
 	}),
 	"pr.ready": async (p) => {
+		assertSingleRepo(getWorkspace(p.workspaceId));
 		recordWorkspaceActivity(p.workspaceId);
 		await readyPr(p);
 		return { ok: true } as const;
 	},
 	"pr.merge": (p) => {
+		assertSingleRepo(getWorkspace(p.workspaceId));
 		recordWorkspaceActivity(p.workspaceId);
 		return mergePr(p);
 	},
 	"pr.reopen": async (p) => {
+		assertSingleRepo(getWorkspace(p.workspaceId));
 		recordWorkspaceActivity(p.workspaceId);
 		await reopenPr(p);
 		return { ok: true } as const;
 	},
 	"pr.open": async (p) => {
+		assertSingleRepo(getWorkspace(p.workspaceId));
 		refreshUserOwnedWorkspace(p.workspaceId);
 		recordWorkspaceActivity(p.workspaceId);
 		const { branch, ...result } = await observePrAction(() => openPr(p), p.source ?? "other");
@@ -769,8 +786,8 @@ const handlers: WsHandlers = {
 	"fs.readDir": async (p) => {
 		void ensureWatch(p.workspaceId);
 		const nodes = readDir(p.workspaceId, p.path);
-		const ignored = await ignoredPaths(
-			getWorkspace(p.workspaceId).worktreePath,
+		const ignored = await workspaceIgnoredPaths(
+			getWorkspace(p.workspaceId),
 			nodes.map((node) => node.path),
 		);
 		return ignored.size === 0
@@ -919,7 +936,8 @@ const handlers: WsHandlers = {
 		void ensureWatch(p.workspaceId);
 		return gitDiffFile(p.workspaceId, p.path, p.scope);
 	},
-	"git.listCommits": (params) => listCommits(params.workspaceId),
+	"git.listCommits": (params) =>
+		getWorkspace(params.workspaceId).multiRepo ? { commits: [] } : listCommits(params.workspaceId),
 	"workspace.turns": (p) => {
 		getWorkspace(p.workspaceId);
 		return { turns: listTurns(p.workspaceId) };

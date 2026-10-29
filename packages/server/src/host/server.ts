@@ -800,7 +800,9 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 		const workspaceId = getSessionWorkspaceId(sessionId);
 		if (!workspaceId) return null;
 		try {
-			return { workspaceId, worktreePath: getWorkspace(workspaceId).worktreePath };
+			const workspace = getWorkspace(workspaceId);
+			if (workspace.multiRepo) return null;
+			return { workspaceId, worktreePath: workspace.worktreePath };
 		} catch {
 			return null;
 		}

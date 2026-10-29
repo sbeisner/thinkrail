@@ -52,8 +52,9 @@ export function setWatchStartedPublisher(publisher: WatchStartedPublisher | null
 	publishWatchStarted = publisher;
 }
 
-function isRepoMetaPath(relPath: string): boolean {
-	return relPath.split(/[\\/]/)[0] === ".git";
+function isRepoMetaPath(relPath: string, multiRepo?: boolean): boolean {
+	const segments = relPath.split(/[\\/]/);
+	return segments[0] === ".git" || (multiRepo === true && segments[1] === ".git");
 }
 
 function resolveExternalGitDir(worktreePath: string): string | null {
@@ -193,7 +194,7 @@ export function ensureWatch(
 	try {
 		const watcher = watch(ws.worktreePath, { recursive: true }, (_event, filename) => {
 			const rel = typeof filename === "string" ? filename.replaceAll("\\", "/") : null;
-			if (rel === null || isRepoMetaPath(rel)) scheduleRepoMeta(workspaceId, watcher);
+			if (rel === null || isRepoMetaPath(rel, ws.multiRepo)) scheduleRepoMeta(workspaceId, watcher);
 			if (rel !== null && isIgnoredPath(rel)) return;
 			const skillChange: WorkspaceSkillChange =
 				rel === null

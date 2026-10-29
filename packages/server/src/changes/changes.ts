@@ -19,7 +19,7 @@ import type {
 } from "@thinkrail/contracts";
 import { CodedError } from "@thinkrail/shared/codedError";
 import { classifyBytes, decodeText, hashBytes, resolveWorktreeFile } from "../fs";
-import { readBlobBytesAtAsync, readPathModeAtAsync, resolveDiffRange } from "../git";
+import { readBlobBytesAtAsync, readPathModeAtAsync, routedDiffRange } from "../git";
 import { loadWorkspaces } from "../persistence";
 import { trashFile } from "../trash";
 import { revertedText, spanFits, splitLines } from "./textSplice";
@@ -210,7 +210,7 @@ function permissionsForGitMode(path: string, mode: number | null): number | null
 
 async function originalSide(params: RevertChangeParams): Promise<FileState> {
 	const ws = workspace(params.workspaceId);
-	const range = await resolveDiffRange(ws, params.scope);
+	const { repoPath, relPath, range } = await routedDiffRange(ws, params.path, params.scope);
 	if (range.modifiedRef !== null) {
 		throw new CodedError(
 			"SCOPE_IMMUTABLE",
@@ -225,8 +225,8 @@ async function originalSide(params: RevertChangeParams): Promise<FileState> {
 	}
 	if (!range.resolvedOriginalOid) return { bytes: null, mode: null };
 	const [bytes, gitMode] = await Promise.all([
-		readBlobBytesAtAsync(ws.worktreePath, range.resolvedOriginalOid, params.path),
-		readPathModeAtAsync(ws.worktreePath, range.resolvedOriginalOid, params.path),
+		readBlobBytesAtAsync(repoPath, range.resolvedOriginalOid, relPath),
+		readPathModeAtAsync(repoPath, range.resolvedOriginalOid, relPath),
 	]);
 	if ((bytes === null) !== (gitMode === null)) {
 		throw new Error(`Could not read a consistent original side for ${params.path}`);

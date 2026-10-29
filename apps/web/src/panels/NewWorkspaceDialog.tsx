@@ -75,7 +75,13 @@ import {
 	useSlashCommandCompletion,
 	useTemplateCommandPicker,
 } from "@/prompt";
-import { selectCatalogModel, selectPickerModels, toast, useAppStore } from "@/store";
+import {
+	isMultiRepoProject,
+	selectCatalogModel,
+	selectPickerModels,
+	toast,
+	useAppStore,
+} from "@/store";
 import { createSessionWithSkillBaseline, errorText, getTransport } from "@/transport";
 import { BranchPicker } from "./BranchPicker";
 import { useBranchList } from "./branches";
@@ -350,12 +356,14 @@ export function NewWorkspaceDialog({
 		if (branches?.remote.includes(ref)) prefetchBase(ref);
 	};
 
+	const multiRepo = isMultiRepoProject(projects.find((p) => p.id === selectedProjectId));
+	const effectiveTarget: WorkspaceTarget = multiRepo ? "default" : target;
 	const {
 		branches,
 		failed: branchesFailed,
 		refreshing,
 		refresh: refreshBranches,
-	} = useBranchList(open ? selectedProjectId : null, (list) => {
+	} = useBranchList(open && !multiRepo ? selectedProjectId : null, (list) => {
 		setBaseRef(list.defaultBranch);
 		prefetchBase(list.defaultBranch);
 	});
@@ -367,7 +375,7 @@ export function NewWorkspaceDialog({
 		const text = finalizeTemplateSlotSession(prompt, slotSession).trim();
 		const attachments = attachedImages.images.map(({ name, content }) => ({ name, content }));
 		let workspace: Workspace;
-		if (target === "default") {
+		if (effectiveTarget === "default") {
 			const def = await enterDefaultWorkspace(selectedProjectId);
 			if (!def) {
 				setCreating(false);
@@ -455,7 +463,7 @@ export function NewWorkspaceDialog({
 	const selectedProject = projects.find((p) => p.id === selectedProjectId);
 	const trustNotice = deriveProjectTrustNotice(selectedProject, trustSummary);
 	const trustEnables = trustNotice.kind === "untrusted" ? trustEnablesText(t, trustNotice) : null;
-	const isolated = target === "worktree";
+	const isolated = effectiveTarget === "worktree";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -492,28 +500,30 @@ export function NewWorkspaceDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<fieldset
-					data-testid="ws-target"
-					className="flex w-fit items-center gap-2 rounded-md border border-control-border-default bg-control-bg p-2"
-				>
-					<legend className="sr-only">{t("panels.newWorkspace.targetLegend")}</legend>
-					<TargetOption
-						icon={GitBranch}
-						label={t("panels.newWorkspace.targetIsolated")}
-						name={targetGroupName}
-						active={isolated}
-						testid="ws-target-worktree"
-						onSelect={() => setTarget("worktree")}
-					/>
-					<TargetOption
-						icon={House}
-						label={t("panels.newWorkspace.targetDefault")}
-						name={targetGroupName}
-						active={!isolated}
-						testid="ws-target-default"
-						onSelect={() => setTarget("default")}
-					/>
-				</fieldset>
+				{multiRepo ? null : (
+					<fieldset
+						data-testid="ws-target"
+						className="flex w-fit items-center gap-2 rounded-md border border-control-border-default bg-control-bg p-2"
+					>
+						<legend className="sr-only">{t("panels.newWorkspace.targetLegend")}</legend>
+						<TargetOption
+							icon={GitBranch}
+							label={t("panels.newWorkspace.targetIsolated")}
+							name={targetGroupName}
+							active={isolated}
+							testid="ws-target-worktree"
+							onSelect={() => setTarget("worktree")}
+						/>
+						<TargetOption
+							icon={House}
+							label={t("panels.newWorkspace.targetDefault")}
+							name={targetGroupName}
+							active={!isolated}
+							testid="ws-target-default"
+							onSelect={() => setTarget("default")}
+						/>
+					</fieldset>
+				)}
 
 				<div className="flex flex-wrap items-center gap-8">
 					<ProjectPicker

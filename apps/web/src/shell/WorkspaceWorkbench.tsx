@@ -747,21 +747,23 @@ export function WorkspaceWorkbench({ workspaceId }: { workspaceId: string }) {
 						<h2 className="max-w-full truncate tr-title-entity text-text-default">
 							{isDefault ? (contextProject?.name ?? workspaceName(t, workspace)) : workspace.name}
 						</h2>
-						<p className="flex max-w-full items-center gap-4 tr-text-metadata text-text-muted">
-							<GitBranch className="size-14 shrink-0" />
-							{isDefault || isExternal ? (
-								<span className="truncate">
-									{t("shell.workbench.ready.onBranch", { branch: workspace.branch })}
-								</span>
-							) : (
-								<>
-									<span className="truncate">{workspace.branch}</span>
-									<span className="shrink-0 text-text-muted">
-										{t("shell.workbench.ready.fromBase", { base: workspace.baseBranch })}
+						{workspace.multiRepo ? null : (
+							<p className="flex max-w-full items-center gap-4 tr-text-metadata text-text-muted">
+								<GitBranch className="size-14 shrink-0" />
+								{isDefault || isExternal ? (
+									<span className="truncate">
+										{t("shell.workbench.ready.onBranch", { branch: workspace.branch })}
 									</span>
-								</>
-							)}
-						</p>
+								) : (
+									<>
+										<span className="truncate">{workspace.branch}</span>
+										<span className="shrink-0 text-text-muted">
+											{t("shell.workbench.ready.fromBase", { base: workspace.baseBranch })}
+										</span>
+									</>
+								)}
+							</p>
+						)}
 					</>
 				) : null}
 				<p className="mt-4 tr-text-ui text-text-muted">

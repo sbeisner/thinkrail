@@ -7,7 +7,13 @@ import {
 import { useT } from "@thinkrail/locales/react";
 import { useEffect, useState } from "react";
 import { PRODUCT_NAME } from "../constants/branding";
-import { selectOnboardingEligible, selectSupportsOnboarding, toast, useAppStore } from "../store";
+import {
+	isMultiRepoProject,
+	selectOnboardingEligible,
+	selectSupportsOnboarding,
+	toast,
+	useAppStore,
+} from "../store";
 import { errorText, getTransport } from "../transport";
 import { AddProjectMenu } from "./AddProjectMenu";
 import { ConnectedLine, type ConnectedSummary } from "./ConnectedLine";
@@ -192,6 +198,8 @@ export function WelcomePanel() {
 							</>
 						) : noProjects ? (
 							noProjectCards()
+						) : isMultiRepoProject(project) ? (
+							projectFolderCard(project.id)
 						) : hasSpecs === null ? (
 							<>
 								<CardSkeleton />

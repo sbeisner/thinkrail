@@ -10,7 +10,8 @@ tags: [public-surface-checked]
 
 ## Responsibility
 
-Keep one stable registry of known git repositories, expose its open and recent views, and open/close a
+Keep one stable registry of known git repositories — and **multi-repo folders** (a plain folder whose
+immediate children are repos) — expose its open and recent views, and open/close a
 project without breaking its workspace identity. For a folder that is not a repo yet, classify it and
 bootstrap it into one so it can be opened.
 
@@ -20,7 +21,10 @@ bootstrap it into one so it can be opened.
   or mutating it: host-absolute paths pass, exact `~` and `~/…` (on Windows also `~\…`) expand against the host account, and every
   other relative path is rejected rather than interpreted against the host process cwd. The same resolved
   path feeds `openProject`, `inspectProjectPath`, `initProject`, and `createProject`, so their classifications and actions
-  cannot disagree. It then validates a path is a repo (`git rev-parse --show-toplevel`; a non-repo rejects
+  cannot disagree. A folder the git module calls multi-repo (`isMultiRepoFolder`) is checked **first** and
+  becomes its own root with `kind: "multiRepo"` — before `--show-toplevel`, so an enclosing repo never
+  swallows it; `inspectProjectPath` classifies it `multiRepo` and `initProject` opens it unchanged (never
+  `git init`). Otherwise it validates a path is a repo (`git rev-parse --show-toplevel`; a non-repo rejects
   with the named `NOT_GIT` code), records the root in the host's resolved spelling (git prints `C:/…` on
   Windows; architecture Decision 22), dedupes by root,
   and assigns a stable unique readable `slug`; `getProjects` returns all known records with slug backfill,

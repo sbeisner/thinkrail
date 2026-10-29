@@ -11,16 +11,19 @@ import {
 	type SubagentOverride,
 	type Workspace,
 } from "@thinkrail/contracts";
+import { CodedError } from "@thinkrail/shared/codedError";
 import { WORKSPACE_CONTEXT_DIR } from "@thinkrail/shared/paths";
 import {
 	assertSafeRef,
 	canonicalPath,
 	changedFileArgs,
+	childRepoTargets,
 	currentBranch,
 	git,
 	gitAsync,
 	headShaAt,
 	listRemotes,
+	type RepoTarget,
 	remoteNameOf,
 	remoteRefOid,
 	remoteTrackingRef,
@@ -133,6 +136,7 @@ export async function listExistingWorktrees(
 	projectId: string,
 ): Promise<ExistingWorktreeCandidate[]> {
 	const project = openProjectById(projectId);
+	if (project.kind === "multiRepo") return [];
 	const entries = await gitWorktreeEntries(project.path);
 	const projectPath = canonicalPath(project.path);
 	const representedPaths = new Set([
@@ -157,6 +161,7 @@ export async function openExistingWorktree(
 	const wantedPath = canonicalPath(requestedPath);
 	const projectPath = canonicalPath(project.path);
 	if (wantedPath === projectPath) return ensureDefaultWorkspace(project);
+	assertSingleRepoProject(project);
 
 	const entries = await gitWorktreeEntries(project.path);
 	const entry = entries.find(
@@ -200,8 +205,33 @@ export async function openExistingWorktree(
 	return workspace;
 }
 
-function folderTruth(repoPath: string): { branch: string; baseBranch: string } {
+function folderTruth(
+	repoPath: string,
+	multiRepo?: boolean,
+): { branch: string; baseBranch: string } {
+	if (multiRepo) return { branch: "", baseBranch: "" };
 	return { branch: currentBranch(repoPath), baseBranch: resolveDefaultBranch(repoPath) };
+}
+
+function assertSingleRepoProject(project: Project): void {
+	if (project.kind === "multiRepo")
+		throw new CodedError(
+			"MULTI_REPO_UNSUPPORTED",
+			"A multi-repo folder works only in its project folder, not in worktree workspaces",
+		);
+}
+
+async function shortstat(target: RepoTarget): Promise<DiffStats> {
+	const result = await gitAsync(
+		target.worktreePath,
+		changedFileArgs(await resolveDiffRange(target), "--shortstat"),
+	);
+	if (!result.ok) throw new Error(result.err);
+	if (!result.out) return { added: 0, removed: 0 };
+	return {
+		added: Number(/(\d+) insertion/.exec(result.out)?.[1] ?? 0),
+		removed: Number(/(\d+) deletion/.exec(result.out)?.[1] ?? 0),
+	};
 }
 
 function applyFolderTruth(ws: Workspace, truth: { branch: string; baseBranch: string }): boolean {
@@ -212,18 +242,21 @@ function applyFolderTruth(ws: Workspace, truth: { branch: string; baseBranch: st
 	return true;
 }
 
+function applyMultiRepo(ws: Workspace, multiRepo: boolean): boolean {
+	if (Boolean(ws.multiRepo) === multiRepo) return false;
+	if (multiRepo) ws.multiRepo = true;
+	else delete ws.multiRepo;
+	return true;
+}
+
 async function diffStats(ws: Workspace): Promise<DiffStats | undefined> {
 	try {
-		const result = await gitAsync(
-			ws.worktreePath,
-			changedFileArgs(await resolveDiffRange(ws), "--shortstat"),
+		if (!ws.multiRepo) return await shortstat(ws);
+		const perRepo = await Promise.all(childRepoTargets(ws).map(({ target }) => shortstat(target)));
+		return perRepo.reduce(
+			(sum, stats) => ({ added: sum.added + stats.added, removed: sum.removed + stats.removed }),
+			{ added: 0, removed: 0 },
 		);
-		if (!result.ok) throw new Error(result.err);
-		if (!result.out) return { added: 0, removed: 0 };
-		return {
-			added: Number(/(\d+) insertion/.exec(result.out)?.[1] ?? 0),
-			removed: Number(/(\d+) deletion/.exec(result.out)?.[1] ?? 0),
-		};
 	} catch {
 		log.warn(`git diff --shortstat failed for workspace ${ws.id}`);
 		return undefined;
@@ -236,6 +269,7 @@ export async function createWorkspace(
 	baseRef?: string,
 ): Promise<Workspace> {
 	const project = openProjectById(projectId);
+	assertSingleRepoProject(project);
 
 	const displayName = name ? toDisplayName(name) : null;
 	const branch = displayName
@@ -323,7 +357,8 @@ export function ensureWorkspaceScratchDir(ws: Workspace): void {
 }
 
 function ensureDefaultWorkspace(project: Project): Workspace {
-	const truth = folderTruth(project.path);
+	const multiRepo = project.kind === "multiRepo";
+	const truth = folderTruth(project.path, multiRepo);
 	const { branch, baseBranch } = truth;
 	const all = loadWorkspaces();
 	const defaults = all.filter((w) => w.projectId === project.id && w.kind === "default");
@@ -336,7 +371,8 @@ function ensureDefaultWorkspace(project: Project): Workspace {
 			all.length = 0;
 			all.push(...keep);
 		}
-		const drifted = applyFolderTruth(existing, truth);
+		const truthDrifted = applyFolderTruth(existing, truth);
+		const drifted = applyMultiRepo(existing, multiRepo) || truthDrifted;
 		if (extras.length > 0 || drifted) saveWorkspaces(all);
 		for (const extra of extras) emit({ kind: "removed", projectId: project.id, id: extra.id });
 		if (drifted) emit({ kind: "updated", workspace: existing });
@@ -347,6 +383,7 @@ function ensureDefaultWorkspace(project: Project): Workspace {
 		id: randomUUID(),
 		projectId: project.id,
 		kind: "default",
+		...(multiRepo ? { multiRepo: true } : {}),
 		name: DEFAULT_WORKSPACE_NAME,
 		branch,
 		worktreePath: project.path,
@@ -376,7 +413,7 @@ export function refreshUserOwnedWorkspace(workspaceId: string): void {
 	if (peek?.kind !== "default" && peek?.kind !== "external") return;
 	const truth =
 		peek.kind === "default"
-			? { kind: "default" as const, ...folderTruth(peek.worktreePath) }
+			? { kind: "default" as const, ...folderTruth(peek.worktreePath, peek.multiRepo) }
 			: (() => {
 					const branch = tryCurrentBranch(peek.worktreePath);
 					return branch === null ? null : { kind: "external" as const, branch };

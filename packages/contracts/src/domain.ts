@@ -63,6 +63,8 @@ export interface Project {
 	slug: string;
 	lastOpened: number;
 	closed?: true;
+	/** A plain folder whose immediate children are git repos; it has only the Default workspace. */
+	kind?: "multiRepo";
 	trusted?: boolean;
 	acknowledgedSkills?: string[];
 	disabledSkills?: string[];
@@ -86,7 +88,9 @@ export interface McpToolGrant {
 	tools: string[];
 }
 
-export type ProjectPathStatus = { kind: "repo" | "initable" | "missing" | "notDirectory" };
+export type ProjectPathStatus = {
+	kind: "repo" | "multiRepo" | "initable" | "missing" | "notDirectory";
+};
 
 /** A kind of the project's own pi resources; `extensions` and `settings` run code on the host. */
 export type ProjectResourceKind =
@@ -125,6 +129,8 @@ export interface Workspace {
 	id: string;
 	projectId: string;
 	kind?: "default" | "external";
+	/** The Default workspace of a multi-repo project: changes are listed as `<child repo>/<path>`. */
+	multiRepo?: true;
 	name: string;
 	branch: string;
 	worktreePath: string;

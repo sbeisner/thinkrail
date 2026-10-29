@@ -1,6 +1,7 @@
 import type { GitDiffScope, Workspace } from "@thinkrail/contracts";
 import { CodedError } from "@thinkrail/shared/codedError";
 import { type GitResult, git, gitAsync } from "./gitExec";
+import { assertSingleRepo } from "./multiRepo";
 
 export function diffBaseRef(ws: Pick<Workspace, "baseBranch" | "diffBase">): string {
 	return ws.diffBase ?? ws.baseBranch;
@@ -34,9 +35,10 @@ export function resolveCommitOid(worktreePath: string, ref: string): string | nu
 }
 
 export async function resolveDiffRange(
-	ws: Pick<Workspace, "baseBranch" | "diffBase" | "worktreePath">,
+	ws: Pick<Workspace, "baseBranch" | "diffBase" | "worktreePath" | "multiRepo">,
 	scope: GitDiffScope = { kind: "branch" },
 ): Promise<DiffRange> {
+	assertSingleRepo(ws);
 	if (scope.kind === "uncommitted") {
 		return {
 			listPrefix: ["diff"],

@@ -23,7 +23,7 @@ export function LocationBar({
 	branchStatus: BranchFacts | null;
 	noteOpenReview: (review: OpenBranchReview, url?: string) => void;
 	refreshBranchStatus: () => void;
-	onNewWorkspace: () => void;
+	onNewWorkspace?: () => void;
 }) {
 	const workspaceSettlingSupported = useAppStore((state) => state.workspaceSettlingSupported);
 	const now = useNow();
@@ -42,9 +42,9 @@ export function LocationBar({
 				workspace={workspace}
 				activeSettled={settled}
 				now={now}
-				onNewWorkspace={onNewWorkspace}
+				{...(onNewWorkspace ? { onNewWorkspace } : {})}
 			/>
-			{workspace ? (
+			{workspace && !workspace.multiRepo ? (
 				<BranchSegment
 					workspace={workspace}
 					review={shownReview}
@@ -52,7 +52,7 @@ export function LocationBar({
 					status={branchStatus}
 				/>
 			) : null}
-			{workspace ? (
+			{workspace && !workspace.multiRepo ? (
 				<ShipStrip
 					key={workspace.id}
 					workspace={workspace}

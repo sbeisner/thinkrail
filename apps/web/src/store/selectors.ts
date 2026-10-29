@@ -790,6 +790,10 @@ export function selectActiveWorkspaceProjectId(state: ActiveWorkspaceState): str
 	return selectActiveWorkspace(state)?.projectId ?? null;
 }
 
+export function isMultiRepoProject(project: Pick<Project, "kind"> | null | undefined): boolean {
+	return project?.kind === "multiRepo";
+}
+
 export function selectContextProject(state: ProjectContextState): Project | null {
 	const projectId = selectActiveWorkspace(state)?.projectId ?? state.selectedProjectId;
 	return state.projects.find((project) => project.id === projectId) ?? null;

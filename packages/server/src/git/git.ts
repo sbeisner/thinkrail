@@ -1,5 +1,5 @@
 import { readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import type {
 	BranchList,
 	GitCommit,
@@ -11,6 +11,7 @@ import type {
 	ResourceMeta,
 	Workspace,
 } from "@thinkrail/contracts";
+import { CodedError } from "@thinkrail/shared/codedError";
 import {
 	CONTENT_SNIFF_BYTES,
 	classifyBytes,
@@ -36,6 +37,7 @@ import {
 	gitBytes,
 	nonInteractiveGitEnv,
 } from "./gitExec";
+import { assertMultiRepoScope, childRepos, routeRepoPath } from "./multiRepo";
 import { isSafeRef, remoteNameOf } from "./refs";
 
 const log = logger("git");
@@ -146,6 +148,8 @@ function groupRemoteRefs(refs: string[], remotes: string[]): RemoteBranchGroup[]
 export async function listBranches(projectId: string): Promise<BranchList> {
 	const project = loadProjects().find((p) => p.id === projectId);
 	if (!project) throw new Error(`Unknown project: ${projectId}`);
+	if (project.kind === "multiRepo")
+		throw new CodedError("MULTI_REPO_UNSUPPORTED", "A multi-repo folder has no single branch list");
 	const repo = project.path;
 
 	const [localRefs, remoteRefs, remoteNames] = await Promise.all([
@@ -233,7 +237,8 @@ export async function prefetchBranch(
 	ref: string,
 ): Promise<{ ok: boolean; moved: boolean }> {
 	const project = loadProjects().find((p) => p.id === projectId);
-	if (!project || !isSafeRef(ref)) return { ok: false, moved: false };
+	if (!project || project.kind === "multiRepo" || !isSafeRef(ref))
+		return { ok: false, moved: false };
 	const remoteName = remoteNameOf(ref, listRemotes(project.path));
 	if (!remoteName) return { ok: false, moved: false };
 	const before = remoteRefOid(project.path, ref);
@@ -338,13 +343,24 @@ export function gitUncommittedPaths(workspaceId: string): string[] {
 	return [...new Set([...nulFields(tracked.out), ...nulFields(untracked.out)])].sort();
 }
 
-export async function gitStatus(workspaceId: string, scope?: GitDiffScope): Promise<GitStatus> {
-	const ws = workspace(workspaceId);
-	const range = await resolveDiffRange(ws, scope);
+export type RepoTarget = Pick<Workspace, "worktreePath" | "baseBranch" | "diffBase">;
+
+export function childRepoTargets(ws: Pick<Workspace, "worktreePath">): Array<{
+	repo: string;
+	target: RepoTarget;
+}> {
+	return childRepos(ws.worktreePath).map((repo) => {
+		const repoPath = join(ws.worktreePath, repo);
+		return { repo, target: { worktreePath: repoPath, baseBranch: resolveDefaultBranch(repoPath) } };
+	});
+}
+
+async function repoChanges(target: RepoTarget, scope?: GitDiffScope): Promise<GitFileChange[]> {
+	const range = await resolveDiffRange(target, scope);
 	const changes: GitFileChange[] = [];
 	const [counts, tracked] = await Promise.all([
-		numstat(ws.worktreePath, range),
-		gitAsync(ws.worktreePath, changedFileArgs(range, "--name-status", true), { raw: true }),
+		numstat(target.worktreePath, range),
+		gitAsync(target.worktreePath, changedFileArgs(range, "--name-status", true), { raw: true }),
 	]);
 	if (!tracked.ok) throw diffFailure(tracked.err);
 	for (const { code, path } of parseNameStatus(tracked.out)) {
@@ -353,14 +369,14 @@ export async function gitStatus(workspaceId: string, scope?: GitDiffScope): Prom
 
 	if (range.untracked) {
 		const untracked = await gitAsync(
-			ws.worktreePath,
+			target.worktreePath,
 			["ls-files", "-z", "--others", "--exclude-standard"],
 			{ raw: true },
 		);
 		if (!untracked.ok) throw diffFailure(untracked.err);
 		for (const path of nulFields(untracked.out)) {
 			if (!path) continue;
-			const added = untrackedAdded(ws.worktreePath, path);
+			const added = untrackedAdded(target.worktreePath, path);
 			changes.push({
 				path,
 				status: "untracked",
@@ -368,11 +384,51 @@ export async function gitStatus(workspaceId: string, scope?: GitDiffScope): Prom
 			});
 		}
 	}
+	return changes;
+}
 
+export async function gitStatus(workspaceId: string, scope?: GitDiffScope): Promise<GitStatus> {
+	const ws = workspace(workspaceId);
+	if (ws.multiRepo) {
+		assertMultiRepoScope(scope);
+		const perRepo = await Promise.all(
+			childRepoTargets(ws).map(async ({ repo, target }) =>
+				(await repoChanges(target, scope)).map((change) => ({
+					...change,
+					path: `${repo}/${change.path}`,
+				})),
+			),
+		);
+		const changes = perRepo.flat().sort((a, b) => a.path.localeCompare(b.path));
+		return { branch: "", changes };
+	}
+	const changes = await repoChanges(ws, scope);
 	changes.sort((a, b) => a.path.localeCompare(b.path));
 	const branch =
 		ws.kind === "default" || ws.kind === "external" ? currentBranch(ws.worktreePath) : ws.branch;
 	return { branch, changes };
+}
+
+/** The repo, repo-relative path and diff range a workspace path's diff reads from. */
+export async function routedDiffRange(
+	ws: Workspace,
+	path: string,
+	scope?: GitDiffScope,
+): Promise<{ repoPath: string; relPath: string; range: DiffRange }> {
+	if (!ws.multiRepo)
+		return { repoPath: ws.worktreePath, relPath: path, range: await resolveDiffRange(ws, scope) };
+	assertMultiRepoScope(scope);
+	const route = routeRepoPath(ws, path);
+	if (!route) throw new Error(`Not inside a child repository: ${path}`);
+	const target = {
+		worktreePath: route.repoPath,
+		baseBranch: resolveDefaultBranch(route.repoPath),
+	};
+	return {
+		repoPath: route.repoPath,
+		relPath: route.relPath,
+		range: await resolveDiffRange(target, scope),
+	};
 }
 
 function objectName(ref: string, path: string): string {
@@ -568,15 +624,15 @@ export async function gitDiffFile(
 	meta: { original: ResourceMeta; modified: ResourceMeta };
 }> {
 	const ws = workspace(workspaceId);
-	const range = await resolveDiffRange(ws, scope);
+	const { repoPath, relPath, range } = await routedDiffRange(ws, path, scope);
 
 	const abs = resolveWorktreeFile(workspaceId, path);
 	const worktreeModified = range.modifiedRef === null ? worktreeBytes(abs) : null;
 	const originalRef = range.resolvedOriginalOid ?? range.originalRef;
 	const [originalBytes, modifiedBytes] = await Promise.all([
-		originalRef ? readBlobBytesAtAsync(ws.worktreePath, originalRef, path) : null,
+		originalRef ? readBlobBytesAtAsync(repoPath, originalRef, relPath) : null,
 		range.modifiedRef
-			? readBlobBytesAtAsync(ws.worktreePath, range.modifiedRef, path)
+			? readBlobBytesAtAsync(repoPath, range.modifiedRef, relPath)
 			: worktreeModified,
 	]);
 	const original = diffSide(originalBytes, path);
